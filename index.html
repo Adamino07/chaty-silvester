@@ -160,6 +160,34 @@ footer { color: var(--muted); font-size: 12.5px; padding-block: 0 40px; display:
   .pc { grid-template-columns: 1fr; }
   .grid { grid-template-columns: 1fr; }
 }
+.bar { position: static; }
+.bar .top { flex-wrap: wrap; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px 28px; padding-top: 4px; }
+.fgroup h3 { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.fgroup .row { gap: 6px 8px; }
+.status select { font-size: 13px; padding: 6px 8px; }
+.status .right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#pre { display: grid; gap: 12px; margin-bottom: 12px; }
+#pre:empty { display: none; }
+.pager { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pager button:disabled { opacity: .4; cursor: default; }
+.elsewhere { padding-block: 36px 0; padding-inline: 0; }
+dialog.who { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); padding: 22px; width: min(460px, calc(100vw - 32px)); }
+dialog.who::backdrop { background: rgba(10, 16, 13, .55); }
+dialog.who h2 { font-family: var(--f-display); font-size: 24px; margin: 0 0 4px; }
+dialog.who p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.who-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.who-list button { font: inherit; font-size: 17px; font-weight: 600; padding: 14px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; overflow-wrap: anywhere; }
+.who-list button:hover { border-color: var(--spruce); color: var(--spruce); }
+dialog.who form { display: grid; gap: 8px; }
+dialog.who label { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+dialog.who input { font: inherit; font-size: 16px; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+dialog.who .btn { justify-content: center; font-size: 16px; padding: 12px; border: 0; cursor: pointer; font-family: inherit; }
+dialog.who .skip { margin-top: 12px; width: 100%; }
+@media (max-width: 640px) {
+  .filters { display: none; }
+  .bar.open .filters { display: grid; grid-template-columns: 1fr; }
+}
 </style>
 
 <header class="wrap">
@@ -169,58 +197,61 @@ footer { color: var(--muted); font-size: 12.5px; padding-block: 0 40px; display:
   <div class="summary" id="summary"></div>
 </header>
 
-<section class="wrap elsewhere" aria-labelledby="elsewhereTitle">
-  <div class="panel">
-    <div class="panel-head">
-      <h2 id="elsewhereTitle">Ďalšie chaty na Slovensku a v Poľsku</h2>
-      <p>Tieto portály automatické čítanie nedovoľujú, preto ich chaty nie sú v zozname nižšie. Odkazy otvoria ich vyhľadávanie s vaším termínom a počtom osôb.</p>
-    </div>
-    <div class="countries" id="elsewhere"></div>
-  </div>
-</section>
-
 <div class="bar" id="bar"><div class="wrap">
-  <div class="row">
+  <div class="row top">
     <div class="seg" role="group" aria-label="Zobraziť" id="views"></div>
     <input type="search" id="q" placeholder="Hľadať chatu, obec, región…" aria-label="Hľadať">
+    <button class="chip toggle-filters" id="toggleFilters" aria-expanded="false">Filtre</button>
   </div>
-  <div class="row" id="mainChips">
-    <button class="chip key" data-k="sauna" aria-pressed="false">Sauna</button>
-    <button class="chip key" data-k="hike" aria-pressed="false">Turistika v okolí</button>
-    <select id="area" aria-label="Pohorie alebo oblasť"><option value="">Všetky pohoria a oblasti</option></select>
-    <select id="minBr" aria-label="Počet spální">
-      <option value="0">Spálne: akékoľvek</option><option value="2">aspoň 2 spálne</option><option value="3">aspoň 3 spálne</option>
-      <option value="4">aspoň 4 spálne</option><option value="5">aspoň 5 spální</option><option value="6">aspoň 6 spální</option>
-    </select>
-    <select id="minBd" aria-label="Počet lôžok">
-      <option value="0">Lôžka: akékoľvek</option><option value="10">aspoň 10 lôžok</option><option value="12">aspoň 12 lôžok</option>
-      <option value="14">aspoň 14 lôžok</option><option value="16">aspoň 16 lôžok</option><option value="20">aspoň 20 lôžok</option>
-    </select>
-    <button class="chip toggle-filters" id="toggleFilters" aria-expanded="false">Ďalšie filtre</button>
+  <div class="filters" id="filters">
+    <div class="fgroup"><h3>Kde</h3><div class="row">
+      <div class="seg" role="group" aria-label="Krajina" id="countries"></div>
+      <select id="area" aria-label="Pohorie alebo oblasť"><option value="">Všetky pohoria a oblasti</option></select>
+      <label class="range" for="maxh">Dojazd do <input type="range" id="maxh" min="1" max="4" step="0.25"><output id="maxhv"></output></label>
+    </div></div>
+    <div class="fgroup"><h3>Veľkosť a cena</h3><div class="row">
+      <select id="minBr" aria-label="Počet spální">
+        <option value="0">Spálne: akékoľvek</option><option value="5">aspoň 5 spální (známy počet)</option>
+        <option value="6">aspoň 6 spální</option><option value="7">aspoň 7 spální</option>
+      </select>
+      <select id="minBd" aria-label="Počet lôžok">
+        <option value="0">Lôžka: akékoľvek</option><option value="10">aspoň 10 lôžok</option><option value="12">aspoň 12 lôžok</option>
+        <option value="14">aspoň 14 lôžok</option><option value="16">aspoň 16 lôžok</option><option value="20">aspoň 20 lôžok</option>
+      </select>
+      <label class="range" for="maxpp">Cena do <input type="range" id="maxpp" min="40" max="200" step="10"><output id="maxppv"></output>/os.</label>
+    </div></div>
+    <div class="fgroup"><h3>Vybavenie</h3><div class="row" id="chipsAm"></div></div>
+    <div class="fgroup"><h3>Poloha a istota</h3><div class="row" id="chipsOther"></div></div>
   </div>
-  <div class="row more-filters">
-    <div class="seg" role="group" aria-label="Krajina" id="countries"></div>
-    <label class="range" for="maxpp">Do <input type="range" id="maxpp" min="40" max="200" step="10"><output id="maxppv"></output>/os.</label>
-    <label class="range" for="maxh">Dojazd do <input type="range" id="maxh" min="1" max="4" step="0.25"><output id="maxhv"></output></label>
-    <select id="sort" aria-label="Zoradiť">
-      <option value="pp">Najlacnejšie na osobu</option>
-      <option value="rating">Najlepšie hodnotené</option>
-      <option value="drive">Najbližšie k Brnu</option>
-      <option value="cap">Najväčšia kapacita</option>
-    </select>
-  </div>
-  <div class="row more-filters" id="chips"></div>
 </div></div>
 
 <main class="wrap">
   <div class="votebar" id="votebar" hidden></div>
-  <div class="status"><span id="count"></span><span id="favTools"></span></div>
+  <div class="status"><span id="count"></span>
+    <span class="right"><button class="ghost" id="clear" hidden>Zrušiť filtre</button><span id="favTools"></span>
+      <select id="sort" aria-label="Zoradiť">
+        <option value="pp">Najlacnejšie na osobu</option>
+        <option value="rating">Najlepšie hodnotené</option>
+        <option value="drive">Najbližšie k Brnu</option>
+        <option value="cap">Najväčšia kapacita</option>
+      </select></span></div>
+  <div id="pre"></div>
   <div class="grid" id="grid"></div>
-  <button class="ghost load" id="load" hidden></button>
+  <nav class="pager" id="pager" aria-label="Stránkovanie"></nav>
+  <section class="elsewhere" aria-labelledby="elsewhereTitle">
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="elsewhereTitle">Ďalšie chaty na Slovensku a v Poľsku</h2>
+        <p>Tieto portály automatické čítanie nedovoľujú, preto ich chaty nie sú v zozname vyššie. Odkazy otvoria ich vyhľadávanie s vaším termínom a počtom osôb.</p>
+      </div>
+      <div class="countries" id="elsewhere"></div>
+    </div>
+  </section>
   <section class="excl"><details><summary id="exclSum"></summary>
     <div class="table-wrap"><table><thead><tr><th>Chata</th><th>Miesto</th><th>Prečo vypadla</th></tr></thead><tbody id="exclBody"></tbody></table></div>
   </details></section>
 </main>
+<dialog class="who" id="who"></dialog>
 
 <footer class="wrap" id="foot"></footer>
 <div class="toast" id="toast" hidden></div>
@@ -252,7 +283,8 @@ $("#summary").innerHTML = [
   [R.filter(r => r.f12).length, "aj pre 12 osôb"], [DATA.excluded.length, "vypadlo"]
 ].map(([n, l]) => `<span class="sum"><b>${n}</b>${l}</span>`).join("");
 $("#foot").innerHTML = `<span>Zdroje s dostupnosťou: e-chalupy.cz (ČR, SR) a noclegowo.pl (PL). Katalógy bez kalendára: ceskehory.cz (ČR), slovenske.cz a ubytujsa.sk (SR), e-turysta.pl (PL). Údaje zozbierané ${esc(DATA.meta.generated.replace("T", " o "))}.</span>
-  <span>Obľúbené sa ukladajú k vášmu účtu na tejto stránke, takže vydržia aj nové verzie stránky. Bez prihlásenia ostanú len v tomto prehliadači.</span>
+  <span>${DATA.vote ? "Hlasuje sa tlačidlami Som za / Nie pri každej chate. Hlasy a komentáre vidia všetci, ktorí majú odkaz na túto stránku."
+    : "Obľúbené sa ukladajú k vášmu účtu na tejto stránke, takže vydržia aj nové verzie stránky. Bez prihlásenia ostanú len v tomto prehliadači."}</span>
   <span>„Voľné“ znamená, že majiteľ vedie kalendár obsadenosti a termín v ňom nie je obsadený. Pred rezerváciou vždy potvrďte termín aj cenu u majiteľa.</span>
   <span>Cena na osobu je prepočítaná na ${C.guests_min} osôb a ${nights} noci (kurz ECB). Pri dlhších povinných pobytoch je to pomerná cena, celková suma je uvedená pod ňou. Hviezdička = odhad.</span>`;
 
@@ -307,19 +339,21 @@ function saveFavs() {
     document.querySelectorAll(".fav").forEach(b => { const n = othersFav[b.dataset.id]; b.title = n ? `Obľúbená aj u ${n} ďalších` : ""; b.dataset.others = n || ""; });
   }, () => {});
 })();
-const st = { view: "volne", country: "", chips: new Set() };
-const VIEWS = [["volne", "Voľné", () => free.length], ["tips", "Tipy", () => tips.length], ["nezname", "Na overenie", () => unk.length],
-               ["all", "Všetky", () => R.length], ["fav", "♥ Obľúbené", () => favs.size]];
+const st = { view: "all", country: "", chips: new Set() };
 const votes = {}, voteMeta = {}, comments = {}; let profiles = [];   // napĺňa sa nižšie, len na verejnej stránke s hlasovaním
-if (DATA.vote) VIEWS.push(["vote", "Hlasovanie", () => Object.keys(votes).length]);
-const KEY_CHIPS = [["sauna", "Sauna", r => r.am.includes("sauna")], ["hike", "Turistika v okolí", r => r.hk]];
-const CHIPS = [
+// Na stránke s hlasovaním nahrádza obľúbené hlas „Som za“ – jeden spôsob, ako si chatu označiť.
+const VIEWS = [["all", "Všetky", () => R.length], ["volne", "Voľné", () => free.length], ["nezname", "Na overenie", () => unk.length],
+               ["tips", "Tipy", () => tips.length],
+               DATA.vote ? ["vote", "Hlasovanie", () => Object.keys(votes).length] : ["fav", "♥ Obľúbené", () => favs.size]];
+const CHIPS_AM = [["sauna", "Sauna", r => r.am.includes("sauna")],
   ["hot", "Vírivka / kaďa", r => r.am.some(a => /vírivka|kaďa/.test(a))],
+  ["krb", "Krb", r => r.am.includes("krb")], ["pool", "Bazén", r => r.am.includes("bazén")]];
+const CHIPS_OTHER = [["hike", "Turistika v okolí", r => r.hk], ["ski", "Pri zjazdovke", r => r.am.includes("blízko zjazdovky")],
+  ["alone", "Na samote", r => r.am.includes("na samote")],
   ["declared", "Majiteľ hlási voľno", r => r.av === "volne" || r.df],
-  ["krb", "Krb", r => r.am.includes("krb")], ["pool", "Bazén", r => r.am.includes("bazén")],
-  ["alone", "Na samote", r => r.am.includes("na samote")], ["ski", "Pri zjazdovke", r => r.am.includes("blízko zjazdovky")],
-  ["f12", `Aj pre ${C.guests_max} osôb`, r => r.f12], ["short", `Stačí ${nights} noci`, r => !r.ls],
-  ["exact", "Presná cena", r => !r.est && r.pp != null], ["rated", "Hodnotenie 4,5+", r => (r.rt || 0) >= 4.5 && r.rc >= 3]];
+  ["exact", "Presná cena", r => !r.est && r.pp != null], ["short", `Stačí ${nights} noci`, r => !r.ls],
+  ["f12", `Aj pre ${C.guests_max} osôb`, r => r.f12], ["rated", "Hodnotenie 4,5+", r => (r.rt || 0) >= 4.5 && r.rc >= 3]];
+const ALL_CHIPS = [...CHIPS_AM, ...CHIPS_OTHER];
 
 function renderViews() {
   $("#views").innerHTML = VIEWS.map(([k, l, n]) =>
@@ -332,11 +366,20 @@ $("#countries").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return; st.country = b.dataset.c;
   $("#countries").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); apply();
 });
-$("#chips").innerHTML = CHIPS.map(([k, l]) => `<button class="chip" data-k="${k}" aria-pressed="false">${l}</button>`).join("");
-[$("#chips"), $("#mainChips")].forEach(box => box.addEventListener("click", e => {
+const chipHtml = list => list.map(([k, l]) => `<button class="chip" data-k="${k}" aria-pressed="false">${l}</button>`).join("");
+$("#chipsAm").innerHTML = chipHtml(CHIPS_AM);
+$("#chipsOther").innerHTML = chipHtml(CHIPS_OTHER);
+$("#filters").addEventListener("click", e => {
   const b = e.target.closest("button[data-k]"); if (!b) return; const k = b.dataset.k;
   st.chips.has(k) ? st.chips.delete(k) : st.chips.add(k); b.setAttribute("aria-pressed", st.chips.has(k)); apply();
-}));
+});
+$("#clear").addEventListener("click", () => {
+  st.chips.clear(); st.country = "";
+  document.querySelectorAll("#filters [data-k]").forEach(b => b.setAttribute("aria-pressed", "false"));
+  $("#countries").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.c === ""));
+  ["#area", "#minBr", "#minBd"].forEach(x => $(x).selectedIndex = 0);
+  maxpp.value = maxpp.max; maxh.value = maxh.max; $("#q").value = ""; apply();
+});
 const areaCounts = {};
 R.forEach(r => { if (r.nat) areaCounts[r.nat] = (areaCounts[r.nat] || 0) + 1; });
 $("#area").insertAdjacentHTML("beforeend", Object.entries(areaCounts).sort((a, b) => b[1] - a[1])
@@ -377,7 +420,7 @@ function card(r) {
   return `<article class="card">
     <a ${photo(r)} href="${esc(r.u)}" target="_blank" rel="noopener" aria-label="${esc(r.n)} – otvoriť ponuku"></a>
     <div class="tags">${tags.join("")}</div>
-    <button class="fav" data-id="${esc(r.id)}" data-others="${othersFav[r.id] || ""}" aria-pressed="${favs.has(r.id)}" aria-label="Pridať do obľúbených">${favs.has(r.id) ? "♥" : "♡"}</button>
+    ${DATA.vote ? "" : `<button class="fav" data-id="${esc(r.id)}" data-others="${othersFav[r.id] || ""}" aria-pressed="${favs.has(r.id)}" aria-label="Pridať do obľúbených">${favs.has(r.id) ? "♥" : "♡"}</button>`}
     <div class="body">
       <div><h2 class="name"><a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.n)}</a></h2>
         <div class="place">${esc(place)}</div>
@@ -404,13 +447,16 @@ function card(r) {
 }
 
 // --- filtrovanie a stránkovanie
-let list = [], shown = 0;
-const PAGE = 48;
+let list = [], page = 0;
+const PAGE = 24;
 function apply() {
   const q = $("#q").value.trim().toLowerCase(), mp = +maxpp.value, mh = +maxh.value;
   $("#maxppv").textContent = mp + " €"; $("#maxhv").textContent = String(mh).replace(".", ",") + " h";
-  const chipFns = [...KEY_CHIPS, ...CHIPS].filter(([k]) => st.chips.has(k)).map(c => c[2]);
+  const chipFns = ALL_CHIPS.filter(([k]) => st.chips.has(k)).map(c => c[2]);
   const area = $("#area").value;
+  const active = st.chips.size + !!st.country + !!area + (+$("#minBr").value > 0) + (+$("#minBd").value > 0) + (mp < +maxpp.max) + (mh < +maxh.max) + !!q;
+  $("#clear").hidden = !active;
+  $("#toggleFilters").textContent = active ? `Filtre (${active})` : "Filtre";
   if (area) chipFns.push(r => r.nat === area);
   // neznámy počet spální/lôžok filter nespĺňa
   const minBr = +$("#minBr").value, minBd = +$("#minBd").value;
@@ -428,27 +474,30 @@ function apply() {
   if (st.view === "vote") list.sort((a, b) => tally(b.id).up - tally(a.id).up || tally(a.id).down - tally(b.id).down);
   $("#count").textContent = `${list.length} ${list.length === 1 ? "chata" : list.length < 5 && list.length ? "chaty" : "chát"}` +
     (st.view === "vote" ? " · zoradené podľa počtu hlasov za" : s === "pp" ? " · presné ceny pred odhadmi" : "");
-  $("#favTools").innerHTML = st.view === "fav" && favs.size ? `<button class="ghost" id="copyFav">Skopírovať zoznam s odkazmi</button>` : "";
-  shown = 0;
+  $("#favTools").innerHTML = !DATA.vote && st.view === "fav" && favs.size ? `<button class="ghost" id="copyFav">Skopírovať zoznam s odkazmi</button>` : "";
+  page = 0;
   const gone = st.view === "fav" ? [...favs].filter(id => !BY_ID[id]).map(metaOf) : [];
   const votedGone = st.view === "vote" ? Object.keys(votes).filter(id => !BY_ID[id]) : [];
-  $("#grid").innerHTML = list.length || gone.length || votedGone.length ? "" : `<div class="empty">${st.view === "vote" ? "Zatiaľ nikto nehlasoval. Hlasuje sa tlačidlami Som za / Nie pri každej chate." : st.view === "fav" ? "Zatiaľ nemáte obľúbené chaty. Pridáte ich srdiečkom na fotke." : "Týmto filtrom nezodpovedá žiadna chata. Skúste niektorý uvoľniť."}</div>`;
-  if (gone.length) $("#grid").insertAdjacentHTML("beforeend", `<div class="gone"><b>Obľúbené, ktoré v aktuálnom zozname nie sú</b> (obsadené, zdražené alebo stiahnuté z portálu):
+  $("#pre").innerHTML = list.length || gone.length || votedGone.length ? "" : `<div class="empty">${st.view === "vote" ? "Zatiaľ nikto nehlasoval. Hlasuje sa tlačidlami Som za / Nie pri každej chate." : st.view === "fav" ? "Zatiaľ nemáte obľúbené chaty. Pridáte ich srdiečkom na fotke." : "Týmto filtrom nezodpovedá žiadna chata. Skúste niektorý uvoľniť."}</div>`;
+  if (gone.length) $("#pre").insertAdjacentHTML("beforeend", `<div class="gone"><b>Obľúbené, ktoré v aktuálnom zozname nie sú</b> (obsadené, zdražené alebo stiahnuté z portálu):
     <ul>${gone.map(m => `<li>${m.u ? `<a href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.n)}</a>` : esc(m.n)} ${m.l ? "· " + esc(m.l) : ""}
       <button class="ghost" data-unfav="${esc(m.id)}">Odobrať</button></li>`).join("")}</ul></div>`);
-  if (votedGone.length) $("#grid").insertAdjacentHTML("beforeend", `<div class="gone"><b>Chaty s hlasmi, ktoré v aktuálnom zozname už nie sú</b> (obsadené, zdražené alebo nespĺňajú nové podmienky):
+  if (votedGone.length) $("#pre").insertAdjacentHTML("beforeend", `<div class="gone"><b>Chaty s hlasmi, ktoré v aktuálnom zozname už nie sú</b> (obsadené, zdražené alebo nespĺňajú nové podmienky):
     <ul>${votedGone.map(id => { const m = voteMeta[id] || {}, t = tally(id);
       return `<li>${m.u ? `<a href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.n || id)}</a>` : esc(m.n || id)} · za ${t.up}, proti ${t.down}</li>`; }).join("")}</ul></div>`);
-  more();
+  draw();
 }
-function more() {
-  const next = list.slice(shown, shown + PAGE);
-  $("#grid").insertAdjacentHTML("beforeend", next.map(card).join(""));
-  shown += next.length;
-  $("#load").hidden = shown >= list.length;
-  $("#load").textContent = `Zobraziť ďalšie (${list.length - shown})`;
+function draw() {
+  const pages = Math.max(1, Math.ceil(list.length / PAGE));
+  page = Math.min(page, pages - 1);
+  $("#grid").innerHTML = list.slice(page * PAGE, (page + 1) * PAGE).map(card).join("");
+  $("#pager").innerHTML = pages < 2 ? "" : `<button class="ghost" data-pg="-1" ${page ? "" : "disabled"}>‹ Predchádzajúce</button>
+    <span>Strana ${page + 1} z ${pages}</span><button class="ghost" data-pg="1" ${page < pages - 1 ? "" : "disabled"}>Ďalšie ›</button>`;
 }
-$("#load").addEventListener("click", more);
+$("#pager").addEventListener("click", e => {
+  const b = e.target.closest("[data-pg]"); if (!b) return;
+  page += +b.dataset.pg; draw(); $("#count").scrollIntoView({ block: "start" });
+});
 
 // --- obľúbené
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2200); }
@@ -479,7 +528,12 @@ $("#exclBody").innerHTML = DATA.excluded.map(x =>
 
 // --- hlasovanie (len verejná stránka s databázou Supabase)
 let me = null;   // {name, code}
-try { me = JSON.parse(localStorage.getItem("voter") || "null"); } catch (e) {}
+let gcode = "", codeNeeded = false;   // kód skupiny: z odkazu ?k=…, inak ho vypýta okno s profilmi
+try { me = JSON.parse(localStorage.getItem("voter") || "null"); gcode = localStorage.getItem("vcode") || (me && me.code) || ""; } catch (e) {}
+try {
+  const u = new URL(location.href), k = u.searchParams.get("k");
+  if (k) { gcode = k; try { localStorage.setItem("vcode", k); } catch (e) {} u.searchParams.delete("k"); history.replaceState(null, "", u); }
+} catch (e) {}
 function tally(id) { const v = Object.values(votes[id] || {}); return { up: v.filter(x => x > 0).length, down: v.filter(x => x < 0).length }; }
 function voteInner(id) {
   const v = votes[id] || {}, mine = me ? v[me.name] || 0 : 0, t = tally(id);
@@ -513,41 +567,56 @@ async function loadVotes() {
     for (const k in comments) delete comments[k];
     vs.forEach(v => { (votes[v.chata_id] = votes[v.chata_id] || {})[v.voter] = v.value; voteMeta[v.chata_id] = { n: v.chata_name, u: v.chata_url }; });
     cs.forEach(c => (comments[c.chata_id] = comments[c.chata_id] || []).push(c));
+    const firstLoad = !voteReady;
     voteReady = true; refreshVotes();
+    let skipped = false; try { skipped = sessionStorage.getItem("whoSkip") === "1"; } catch (e) {}
+    if (firstLoad && !me && !skipped) openWho();
     if (st.view === "vote" && !document.querySelector(".cmts[open]") && document.activeElement.tagName !== "INPUT") apply();
   } catch (e) { voteReady = false; renderVotebar(); }
 }
 function renderVotebar() {
   const bar = $("#votebar"); bar.hidden = false;
   if (!voteReady) { bar.innerHTML = `<span class="muted">Hlasovanie sa teraz nedá načítať. Skúste stránku obnoviť neskôr.</span>`; return; }
-  // neprepisovať rozpísaný formulár; inak ho obnoviť, aby v zozname pribudli nové profily
-  if (!me && bar.querySelector("form") && (bar.contains(document.activeElement) || $("#vWho").value || $("#vCode").value)) return;
   const people = new Set(); Object.values(votes).forEach(v => Object.keys(v).forEach(n => people.add(n)));
   const stat = `<span class="muted">Hlasovalo ${people.size} ľudí${people.size ? ": " + esc([...people].join(", ")) : ""}.</span>`;
-  bar.innerHTML = me ? `<span>Hlasujete ako <b>${esc(me.name)}</b></span><button class="ghost" id="voteLogout">Zmeniť meno</button>${stat}`
-    : `<form id="voteLogin"><b>Zapojte sa do hlasovania:</b>
-       <select id="vWho" aria-label="Váš profil"><option value="">Kto ste?</option>${profiles.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("")}<option value="__new">+ Nový profil</option></select>
-       <input id="vName" maxlength="40" placeholder="Meno nového profilu" aria-label="Meno nového profilu" hidden>
-       <input id="vCode" placeholder="Kód skupiny" aria-label="Kód skupiny" required><button class="btn" type="submit">Pokračovať</button></form>${stat}`;
+  bar.innerHTML = me ? `<span>Hlasujete ako <b>${esc(me.name)}</b></span><button class="ghost" id="voteLogout">Zmeniť profil</button>
+      <button class="ghost" id="copyInvite">Skopírovať odkaz pre kamarátov</button>${stat}`
+    : `<button class="btn" id="openWho" style="border:0;cursor:pointer;font-family:inherit">Vybrať profil a hlasovať</button>${stat}`;
 }
-function needLogin() { toast("Najprv si vyberte profil a zadajte kód skupiny"); $("#votebar").scrollIntoView({ behavior: "smooth", block: "center" }); const n = $("#vWho"); if (n) n.focus(); }
-document.addEventListener("change", e => { if (e.target.id === "vWho") { const n = $("#vName"); n.hidden = e.target.value !== "__new"; if (!n.hidden) n.focus(); } });
+function renderWho() {
+  const code = !gcode || codeNeeded ? `<label>Kód skupiny<input id="vCode" value="${esc(gcode)}" autocomplete="off" required></label>` : "";
+  $("#who").innerHTML = `<h2>Kto ste?</h2>
+    <p>${profiles.length ? "Vyberte svoj profil, alebo si založte nový." : "Založte si profil, pod ktorým budete hlasovať a komentovať."}</p>
+    ${code && profiles.length ? `<form onsubmit="return false" style="margin-bottom:14px">${code}</form>` : ""}
+    <div class="who-list">${profiles.map(n => `<button type="button" data-pick="${esc(n)}">${esc(n)}</button>`).join("")}</div>
+    <form id="newProfile">${code && !profiles.length ? code : ""}
+      <label>Nový profil<input id="vName" maxlength="40" placeholder="Vaše meno" autocomplete="off" required></label>
+      <button class="btn" type="submit">Založiť profil</button></form>
+    <button class="ghost skip" type="button" id="whoSkip">Len si prezerám</button>`;
+}
+function openWho() { renderWho(); const d = $("#who"); if (!d.open) d.showModal(); }
+function needLogin() { toast("Najprv si vyberte profil"); openWho(); }
+async function login(name, isNew) {
+  const c = $("#vCode"); if (c) gcode = c.value.trim();
+  if (!gcode) { codeNeeded = true; renderWho(); return toast("Zadajte kód skupiny"); }
+  try {
+    const saved = await sb("rpc/join_group", { p_code: gcode, p_voter: name, p_new: isNew });
+    me = { name: saved }; codeNeeded = false;
+    try { localStorage.setItem("voter", JSON.stringify(me)); localStorage.setItem("vcode", gcode); } catch (x) {}
+    $("#who").close(); refreshVotes(); toast(`Hlasujete ako ${saved}`);
+  } catch (x) {
+    const m = String(x.message);
+    if (m.includes("bad_code")) { codeNeeded = true; renderWho(); return toast("Kód skupiny nesedí"); }
+    toast(m.includes("name_taken") ? "Profil s týmto menom už existuje – vyberte ho zo zoznamu"
+      : m.includes("no_profile") ? "Tento profil už neexistuje, založte nový" : "Prihlásenie zlyhalo, skúste to znova");
+    if (m.includes("name_taken") || m.includes("no_profile")) { await loadVotes(); renderWho(); }
+  }
+}
 document.addEventListener("submit", async e => {
-  if (e.target.id === "voteLogin") {
+  if (e.target.id === "newProfile") {
     e.preventDefault();
-    const who = $("#vWho").value, isNew = who === "__new", code = $("#vCode").value.trim();
-    const name = isNew ? $("#vName").value.trim() : who;
-    if (!name) return toast(isNew ? "Zadajte meno nového profilu" : "Vyberte svoj profil alebo založte nový");
-    try {
-      const saved = await sb("rpc/join_group", { p_code: code, p_voter: name, p_new: isNew });
-      me = { name: saved, code }; try { localStorage.setItem("voter", JSON.stringify(me)); } catch (x) {}
-      $("#votebar").innerHTML = ""; refreshVotes(); toast("Môžete hlasovať");
-    } catch (x) {
-      const m = String(x.message);
-      toast(m.includes("bad_code") ? "Kód skupiny nesedí" : m.includes("name_taken") ? "Profil s týmto menom už existuje – vyberte ho zo zoznamu"
-        : m.includes("no_profile") ? "Tento profil už neexistuje, založte nový" : "Prihlásenie zlyhalo, skúste to znova");
-      if (m.includes("name_taken")) loadVotes();
-    }
+    const name = $("#vName").value.trim();
+    if (name) login(name, true);
     return;
   }
   const cid = e.target.dataset.cform;
@@ -556,12 +625,21 @@ document.addEventListener("submit", async e => {
     if (!me) return needLogin();
     const input = e.target.querySelector("input"), body = input.value.trim();
     if (!body) return;
-    try { await sb("rpc/add_comment", { p_code: me.code, p_chata: cid, p_voter: me.name, p_body: body }); input.value = ""; await loadVotes(); toast("Komentár pridaný"); }
+    try { await sb("rpc/add_comment", { p_code: gcode, p_chata: cid, p_voter: me.name, p_body: body }); input.value = ""; await loadVotes(); toast("Komentár pridaný"); }
     catch (x) { toast("Komentár sa nepodarilo uložiť"); }
   }
 });
 document.addEventListener("click", async e => {
-  if (e.target.id === "voteLogout") { me = null; try { localStorage.removeItem("voter"); } catch (x) {} refreshVotes(); return; }
+  if (e.target.dataset.pick) return login(e.target.dataset.pick, false);
+  if (e.target.id === "whoSkip") { try { sessionStorage.setItem("whoSkip", "1"); } catch (x) {} $("#who").close(); return; }
+  if (e.target.id === "openWho") return openWho();
+  if (e.target.id === "voteLogout") { me = null; try { localStorage.removeItem("voter"); } catch (x) {} refreshVotes(); openWho(); return; }
+  if (e.target.id === "copyInvite") {
+    const u = new URL(location.href); u.search = ""; u.hash = ""; u.searchParams.set("k", gcode);
+    navigator.clipboard.writeText(u.toString()).then(() => toast("Odkaz skopírovaný – pošlite ho kamarátom"))
+      .catch(() => toast("Kopírovanie sa nepodarilo: " + u.toString()));
+    return;
+  }
   const b = e.target.closest("[data-vote]");
   if (!b) return;
   if (!me) return needLogin();
@@ -570,7 +648,7 @@ document.addEventListener("click", async e => {
   votes[id] = votes[id] || {};
   if (val) votes[id][me.name] = val; else { delete votes[id][me.name]; if (!Object.keys(votes[id]).length) delete votes[id]; }
   refreshVotes();
-  try { await sb("rpc/cast_vote", { p_code: me.code, p_chata: id, p_voter: me.name, p_value: val, p_name: r.n || "", p_url: r.u || "" }); }
+  try { await sb("rpc/cast_vote", { p_code: gcode, p_chata: id, p_voter: me.name, p_value: val, p_name: r.n || "", p_url: r.u || "" }); }
   catch (x) { toast("Hlas sa nepodarilo uložiť"); loadVotes(); }
 });
 
