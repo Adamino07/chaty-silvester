@@ -173,6 +173,8 @@ footer { color: var(--muted); font-size: 12.5px; padding-block: 0 40px; display:
 .pager button:disabled { opacity: .4; cursor: default; }
 .elsewhere { padding-block: 36px 0; padding-inline: 0; }
 dialog.who { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); padding: 22px; width: min(460px, calc(100vw - 32px)); }
+.votebar .results { margin-left: auto; }
+dialog.who { box-sizing: border-box; overflow: hidden auto; max-height: calc(100vh - 32px); }
 dialog.who::backdrop { background: rgba(10, 16, 13, .55); }
 dialog.who h2 { font-family: var(--f-display); font-size: 24px; margin: 0 0 4px; }
 dialog.who p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
@@ -344,7 +346,7 @@ const votes = {}, voteMeta = {}, comments = {}; let profiles = [];   // napĺňa
 // Na stránke s hlasovaním nahrádza obľúbené hlas „Som za“ – jeden spôsob, ako si chatu označiť.
 const VIEWS = [["all", "Všetky", () => R.length], ["volne", "Voľné", () => free.length], ["nezname", "Na overenie", () => unk.length],
                ["tips", "Tipy", () => tips.length],
-               DATA.vote ? ["vote", "Hlasovanie", () => Object.keys(votes).length] : ["fav", "♥ Obľúbené", () => favs.size]];
+               ...(DATA.vote ? [] : [["fav", "♥ Obľúbené", () => favs.size]])];   // výsledky hlasovania majú vlastnú stránku
 const CHIPS_AM = [["sauna", "Sauna", r => r.am.includes("sauna")],
   ["hot", "Vírivka / kaďa", r => r.am.some(a => /vírivka|kaďa/.test(a))],
   ["krb", "Krb", r => r.am.includes("krb")], ["pool", "Bazén", r => r.am.includes("bazén")]];
@@ -579,9 +581,10 @@ function renderVotebar() {
   if (!voteReady) { bar.innerHTML = `<span class="muted">Hlasovanie sa teraz nedá načítať. Skúste stránku obnoviť neskôr.</span>`; return; }
   const people = new Set(); Object.values(votes).forEach(v => Object.keys(v).forEach(n => people.add(n)));
   const stat = `<span class="muted">Hlasovalo ${people.size} ľudí${people.size ? ": " + esc([...people].join(", ")) : ""}.</span>`;
+  const results = `<a class="btn results" href="vysledky.html">Výsledky hlasovania ›</a>`;
   bar.innerHTML = me ? `<span>Hlasujete ako <b>${esc(me.name)}</b></span><button class="ghost" id="voteLogout">Zmeniť profil</button>
-      <button class="ghost" id="copyInvite">Skopírovať odkaz pre kamarátov</button>${stat}`
-    : `<button class="btn" id="openWho" style="border:0;cursor:pointer;font-family:inherit">Vybrať profil a hlasovať</button>${stat}`;
+      <button class="ghost" id="copyInvite">Skopírovať odkaz pre kamarátov</button>${stat}${results}`
+    : `<button class="btn" id="openWho" style="border:0;cursor:pointer;font-family:inherit">Vybrať profil a hlasovať</button>${stat}${results}`;
 }
 function renderWho() {
   const code = !gcode || codeNeeded ? `<label>Kód skupiny<input id="vCode" value="${esc(gcode)}" autocomplete="off" required></label>` : "";
