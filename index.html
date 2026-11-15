@@ -70,6 +70,7 @@ input[type=search], select { font: inherit; font-size: 14px; color: var(--ink); 
 input[type=search] { flex: 1 1 180px; min-width: 0; }
 .range { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .range input { width: 110px; accent-color: var(--spruce); }
+#personsv { min-width: 58px; }
 .range output { min-width: 44px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .toggle-filters { display: none; }
 
@@ -217,7 +218,7 @@ dialog.who .skip { margin-top: 12px; width: 100%; }
       <label class="range" for="maxh">Dojazd do <input type="range" id="maxh" min="1" max="4" step="0.25"><output id="maxhv"></output></label>
     </div></div>
     <div class="fgroup"><h3>Veľkosť a cena</h3><div class="row">
-      <label class="range" for="persons">Počet osôb <select id="persons" aria-label="Počet osôb"></select></label>
+      <label class="range" for="persons">Počet osôb <input type="range" id="persons" min="1" max="20" step="1"><output id="personsv"></output></label>
       <select id="minBr" aria-label="Počet spální">
         <option value="0">Spálne: akékoľvek</option><option value="5">aspoň 5 spální (známy počet)</option>
         <option value="6">aspoň 6 spální</option><option value="7">aspoň 7 spální</option>
@@ -406,16 +407,17 @@ $("#clear").addEventListener("click", () => {
   st.chips.clear(); st.country = "";
   document.querySelectorAll("#filters [data-k]").forEach(b => b.setAttribute("aria-pressed", "false"));
   $("#countries").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.c === ""));
-  ["#area", "#minBr", "#minBd", "#persons"].forEach(x => $(x).selectedIndex = 0);
+  ["#area", "#minBr", "#minBd"].forEach(x => $(x).selectedIndex = 0);
+  $("#persons").value = C.guests_min;
   maxpp.value = maxpp.max; maxh.value = maxh.max; $("#q").value = ""; apply();
 });
 const areaCounts = {};
 R.forEach(r => { if (r.nat) areaCounts[r.nat] = (areaCounts[r.nat] || 0) + 1; });
 $("#area").insertAdjacentHTML("beforeend", Object.entries(areaCounts).sort((a, b) => b[1] - a[1])
   .map(([a, n]) => `<option value="${esc(a)}">${esc(a)} (${n})</option>`).join(""));
-$("#persons").innerHTML = Array.from({ length: (C.group_size_max || 20) - C.guests_min + 1 }, (_, i) => C.guests_min + i)
-  .map(n => `<option value="${n}">${n} osôb</option>`).join("");
-["#area", "#minBr", "#minBd", "#persons"].forEach(s => $(s).addEventListener("change", apply));
+$("#persons").max = C.group_size_max || 20; $("#persons").value = C.guests_min;
+["input", "change"].forEach(ev => $("#persons").addEventListener(ev, apply));
+["#area", "#minBr", "#minBd"].forEach(s => $(s).addEventListener("change", apply));
 const maxpp = $("#maxpp"), maxh = $("#maxh");
 maxpp.max = C.max_price_per_person_eur; maxpp.value = C.max_price_per_person_eur;
 maxh.max = C.max_drive_hours; maxh.value = C.max_drive_hours;
@@ -486,11 +488,12 @@ const PAGE = 24;
 function apply() {
   const q = $("#q").value.trim().toLowerCase(), mp = +maxpp.value, mh = +maxh.value;
   N = +$("#persons").value;
+  $("#personsv").textContent = N + (N === 1 ? " osoba" : N < 5 ? " osoby" : " osôb");
   const noLimit = mp >= +maxpp.max;   // doraz posuvníka = bez limitu (dlhšie povinné pobyty bývajú drahšie)
   $("#maxppv").textContent = noLimit ? "bez limitu" : mp + " €"; $("#maxhv").textContent = String(mh).replace(".", ",") + " h";
   const chipFns = ALL_CHIPS.filter(([k]) => st.chips.has(k)).map(c => c[2]);
   const area = $("#area").value;
-  const active = st.chips.size + !!st.country + !!area + (+$("#minBr").value > 0) + (+$("#minBd").value > 0) + (N > C.guests_min) + (mp < +maxpp.max) + (mh < +maxh.max) + !!q;
+  const active = st.chips.size + !!st.country + !!area + (+$("#minBr").value > 0) + (+$("#minBd").value > 0) + (N !== C.guests_min) + (mp < +maxpp.max) + (mh < +maxh.max) + !!q;
   $("#clear").hidden = !active;
   $("#toggleFilters").textContent = active ? `Filtre (${active})` : "Filtre";
   if (area) chipFns.push(r => r.nat === area);
