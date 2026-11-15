@@ -76,6 +76,15 @@ main { padding-block: 10px 48px; display: grid; gap: 12px; }
 .inq .st.no { background: var(--ember-soft); color: var(--ember); }
 .inq .muted { color: var(--muted); }
 .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 13px; z-index: 20; }
+.vote { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.vbtn { font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 999px; padding: 6px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.vbtn b { font-variant-numeric: tabular-nums; margin-left: 4px; }
+.vbtn.up[aria-pressed="true"] { background: var(--spruce); border-color: var(--spruce); color: var(--spruce-ink); }
+.vbtn.down[aria-pressed="true"] { background: var(--ember-soft); border-color: var(--ember); color: var(--ember); }
+.cform { display: flex; gap: 6px; margin-top: 4px; }
+.cform input { flex: 1; min-width: 0; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+.cform button { font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px; padding: 7px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--spruce); }
+.whoami { font-size: 13.5px; margin-top: 10px; }
 .empty { text-align: center; color: var(--muted); padding: 40px 16px; background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; }
 footer { color: var(--muted); font-size: 12.5px; padding-block: 0 40px; }
 @media (max-width: 600px) {
@@ -92,6 +101,7 @@ footer { color: var(--muted); font-size: 12.5px; padding-block: 0 40px; }
   <p class="lead">Chaty zoradené podľa počtu hlasov „Som za“ od všetkých hlasujúcich. Pri rovnosti rozhoduje menej hlasov proti.</p>
   <div class="summary" id="summary"></div>
   <div class="people" id="people"></div>
+  <div class="whoami" id="whoami"></div>
 </header>
 <main class="wrap" id="list"><div class="empty">Načítavam hlasy…</div></main>
 <footer class="wrap" id="foot"></footer>
@@ -120,6 +130,30 @@ function inqHtml(id, q) {
   return `<div class="inq"><span class="st ${cls}">${esc(label)}</span><span class="muted">navrhol/a ${esc(q.requested_by)} ${fmtDay(q.requested_at)}${q.status !== "navrh" ? " · stav z " + fmtDay(q.updated_at) : ""}</span>${q.note ? `<span>${esc(q.note)}</span>` : ""}</div>`;
 }
 let rowsById = {};
+// Profil a kód skupiny sa preberajú z hlavnej stránky (rovnaký prehliadač).
+function ident() {
+  let me = null, code = "";
+  try { me = JSON.parse(localStorage.getItem("voter") || "null"); code = localStorage.getItem("vcode") || ""; } catch (x) {}
+  return me && code ? { name: me.name, code } : null;
+}
+const noProfile = () => toast("Najprv si na hlavnej stránke vyberte profil");
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-vote]"); if (!b) return;
+  const who = ident(); if (!who) return noProfile();
+  const id = b.dataset.id, x = rowsById[id] || {}, want = +b.dataset.vote, val = x.mine === want ? 0 : want;   // druhý klik hlas zruší
+  b.disabled = true;
+  try { await sb("rpc/cast_vote", { p_code: who.code, p_chata: id, p_voter: who.name, p_value: val, p_name: x.name || "", p_url: x.url || "" }); await load(true); }
+  catch (err) { b.disabled = false; toast(String(err.message).includes("no_profile") ? "Najprv si na hlavnej stránke vyberte profil" : "Hlas sa nepodarilo uložiť"); }
+});
+document.addEventListener("submit", async e => {
+  const id = e.target.dataset.cform; if (!id) return;
+  e.preventDefault();
+  const who = ident(); if (!who) return noProfile();
+  const input = e.target.querySelector("input"), body = input.value.trim();
+  if (!body) return;
+  try { await sb("rpc/add_comment", { p_code: who.code, p_chata: id, p_voter: who.name, p_body: body }); input.value = ""; await load(true); toast("Komentár pridaný"); }
+  catch (err) { toast("Komentár sa nepodarilo uložiť"); }
+});
 document.addEventListener("click", async e => {
   const id = e.target.dataset.inq; if (!id) return;
   let me = null, code = "";
@@ -127,7 +161,7 @@ document.addEventListener("click", async e => {
   if (!me || !code) return toast("Najprv si na hlavnej stránke vyberte profil");
   const x = rowsById[id] || {};
   e.target.disabled = true;
-  try { await sb("rpc/request_inquiry", { p_code: code, p_chata: id, p_voter: me.name, p_name: x.name || "", p_url: x.url || "" }); toast("Chata je navrhnutá na dopyt"); load(); }
+  try { await sb("rpc/request_inquiry", { p_code: code, p_chata: id, p_voter: me.name, p_name: x.name || "", p_url: x.url || "" }); toast("Chata je navrhnutá na dopyt"); load(true); }
   catch (err) { e.target.disabled = false; toast(String(err.message).includes("no_profile") ? "Najprv si na hlavnej stránke vyberte profil" : "Návrh sa nepodarilo uložiť"); }
 });
 function photo(r) {
@@ -135,7 +169,11 @@ function photo(r) {
   const [sheet, i] = r.img, col = i % GC, row = Math.floor(i / GC);
   return `class="ph" style="background-image:url('${DATA.sheets[sheet]}');background-size:${GC * 100}% ${GR * 100}%;background-position:${col / (GC - 1) * 100}% ${row / (GR - 1) * 100}%"`;
 }
-async function load() {
+async function load(force) {
+  // automatické obnovenie neprepíše rozpísaný komentár
+  if (!force && [...document.querySelectorAll("#list input")].some(i => i.value || i === document.activeElement)) return;
+  const who = ident();
+  $("#whoami").innerHTML = who ? `Hlasujete ako <b>${esc(who.name)}</b>.` : `Ak chcete hlasovať alebo komentovať, <a href="./">vyberte si profil na hlavnej stránke</a>.`;
   let vs, cs, ps, qs = [], cu = [];
   try {
     [vs, cs, ps] = await Promise.all([sb("votes?select=chata_id,voter,value,chata_name,chata_url"),
@@ -164,7 +202,8 @@ async function load() {
     const key = x.up.length + ":" + x.down.length;
     if (key !== prev) { rank = i + 1; prev = key; }   // rovnaký výsledok = rovnaké poradie
     const r = BY_ID[x.id], name = (r && r.n) || x.n || x.id, url = (r && r.u) || x.u;
-    rowsById[x.id] = { name, url };
+    const mine = who ? (x.up.includes(who.name) ? 1 : x.down.includes(who.name) ? -1 : 0) : 0;
+    rowsById[x.id] = { name, url, mine };
     const cx = CU[x.id];
     const cmeta = cx ? [cx.place, cx.price ? eur(cx.price / (rates[cx.currency] || 1) / 10) + " / os. pri 10 os." : "cena neuvedená",
       (cx.bedrooms || "?") + " spální, " + (cx.beds || "?") + " lôžok", "pridal/a " + cx.added_by + ", termín treba overiť"].filter(Boolean).join(" · ") : "";
@@ -178,10 +217,13 @@ async function load() {
         <h2 class="name">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)} ↗</a>` : esc(name)}</h2>
         <div class="meta">${esc(cx ? cmeta : meta)} ${r || cx ? "" : `<span class="gone">už nie je v zozname</span>`}</div>
         <div class="bar" aria-hidden="true"><i class="up" style="width:${x.up.length / max * 100}%"></i><i class="down" style="width:${x.down.length / max * 100}%"></i></div>
+        <div class="vote"><button class="vbtn up" data-vote="1" data-id="${esc(x.id)}" aria-pressed="${mine > 0}">Som za <b>${x.up.length}</b></button>
+          <button class="vbtn down" data-vote="-1" data-id="${esc(x.id)}" aria-pressed="${mine < 0}">Nie <b>${x.down.length}</b></button></div>
         <div class="tally"><span class="za"><b>${x.up.length} za</b>${x.up.length ? ": " + esc(x.up.join(", ")) : ""}</span>
           <span class="proti"><b>${x.down.length} proti</b>${x.down.length ? ": " + esc(x.down.join(", ")) : ""}</span></div>
         ${inqHtml(x.id, inq[x.id])}
         ${x.cm.map(c => `<p class="cm"><b>${esc(c.voter)}:</b> ${esc(c.body)}</p>`).join("")}
+        <form class="cform" data-cform="${esc(x.id)}"><input type="text" maxlength="500" placeholder="Napíšte komentár…" aria-label="Komentár"><button type="submit">Pridať</button></form>
       </div></article>`;
   }).join("") || `<div class="empty">Zatiaľ nikto nehlasoval. Hlasuje sa na <a href="./">hlavnej stránke</a> tlačidlami Som za / Nie pri každej chate.</div>`;
   $("#foot").textContent = "Obnovené " + new Date().toLocaleTimeString("sk-SK") + " · stránka sa obnovuje sama každých 30 sekúnd. Hviezdička pri cene = odhad.";
